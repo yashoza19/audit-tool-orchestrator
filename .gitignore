@@ -213,3 +213,5 @@ GitHub.sublime-settings
 
 # Custom ignores
 bundlelist.json
+.idea
+.idea/*
