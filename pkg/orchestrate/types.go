@@ -1,16 +1,23 @@
 package orchestrate
 
+import "github.com/openshift/hive/apis/hive/v1/azure"
+
 type PoolFlags struct {
-	Name          string `json:"name"`
-	Namespace     string `json:"namespace"`
-	BaseDomain    string `json:"baseDomain"`
-	OpenShift     string `json:"openshift"`
-	InstallConfig string `json:"installConfig"`
-	Platform      string `json:"platform"`
-	Credentials   string `json:"credentials"`
-	Region        string `json:"region"`
-	Running       int    `json:"running"`
-	Size          int    `json:"size"`
+	Name                             string                 `json:"name"`
+	Namespace                        string                 `json:"namespace"`
+	BaseDomain                       string                 `json:"baseDomain"`
+	OpenShift                        string                 `json:"openshift"`
+	InstallConfig                    string                 `json:"installConfig"`
+	ImagePullSecret                  string                 `json:"image-pull-secret"`
+	Platform                         string                 `json:"platform"`
+	Credentials                      string                 `json:"credentials"`
+	Region                           string                 `json:"region"`
+	Running                          int32                  `json:"running"`
+	Size                             int32                  `json:"size"`
+	AzureBaseDomainResourceGroupName string                 `json:"azurebasedomainresourcegroupname"`
+	AzureCloudName                   azure.CloudEnvironment `json:"azurecloudname"`
+	IBMAccountID                     string                 `json:"ibmaccountid"`
+	IBMCISInstanceCRN                string                 `json:"ibmcisinstancecrn"`
 }
 
 type ClaimFlags struct {

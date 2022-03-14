@@ -7,6 +7,9 @@ import (
 	"context"
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	"github.com/openshift/hive/apis/hive/v1/aws"
+	"github.com/openshift/hive/apis/hive/v1/azure"
+	"github.com/openshift/hive/apis/hive/v1/gcp"
+	"github.com/openshift/hive/apis/hive/v1/ibmcloud"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -34,18 +37,68 @@ func NewCmd() *cobra.Command {
 		"")
 	cmd.Flags().StringVar(&flags.InstallConfig, "install-config", "ato-install-config",
 		"")
-	cmd.Flags().StringVar(&flags.Platform, "platform", "aws",
+	cmd.Flags().StringVar(&flags.ImagePullSecret, "image-pull-secret", "hive-install-config-global-pullsecret",
 		"")
-	cmd.Flags().StringVar(&flags.Credentials, "credentials", "hive-aws-creds",
+	cmd.Flags().StringVar(&flags.Platform, "platform", "",
 		"")
-	cmd.Flags().StringVar(&flags.Region, "region", "us-east-1",
+	cmd.Flags().StringVar(&flags.Credentials, "credentials", "",
 		"")
-	cmd.Flags().IntVar(&flags.Running, "running", 0,
+	cmd.Flags().StringVar(&flags.Region, "region", "",
 		"")
-	cmd.Flags().IntVar(&flags.Size, "size", 0,
+	cmd.Flags().Int32Var(&flags.Running, "running", 0,
+		"")
+	cmd.Flags().Int32Var(&flags.Size, "size", 0,
+		"")
+	cmd.Flags().StringVar(&flags.IBMAccountID, "ibmaccountid", "",
+		"")
+	cmd.Flags().StringVar(&flags.IBMCISInstanceCRN, "ibmcisinstancecrn", "",
 		"")
 
 	return cmd
+}
+
+func setPlatform(platform string, flags orchestrate.PoolFlags) hivev1.Platform {
+	switch platform {
+	case "aws":
+		aws := &aws.Platform{
+			CredentialsSecretRef: corev1.LocalObjectReference{Name: flags.Credentials},
+			Region:               flags.Region,
+		}
+
+		return hivev1.Platform{AWS: aws}
+	case "azure":
+		azure := &azure.Platform{
+			CredentialsSecretRef:        corev1.LocalObjectReference{Name: flags.Credentials},
+			Region:                      flags.Region,
+			BaseDomainResourceGroupName: flags.AzureBaseDomainResourceGroupName,
+			CloudName:                   flags.AzureCloudName,
+		}
+
+		return hivev1.Platform{Azure: azure}
+	case "gcp":
+		gcp := &gcp.Platform{
+			CredentialsSecretRef: corev1.LocalObjectReference{Name: flags.Credentials},
+			Region:               flags.Region,
+		}
+
+		return hivev1.Platform{GCP: gcp}
+	case "ibm":
+		ibm := &ibmcloud.Platform{
+			CredentialsSecretRef: corev1.LocalObjectReference{Name: flags.Credentials},
+			AccountID:            flags.IBMAccountID,
+			CISInstanceCRN:       flags.IBMCISInstanceCRN,
+			Region:               flags.Region,
+		}
+
+		return hivev1.Platform{IBMCloud: ibm}
+	}
+
+	return hivev1.Platform{
+		AWS: &aws.Platform{
+			CredentialsSecretRef: corev1.LocalObjectReference{Name: flags.Credentials},
+			Region:               flags.Region,
+		},
+	}
 }
 
 func validation(cmd *cobra.Command, args []string) error {
@@ -57,22 +110,17 @@ func run(cmd *cobra.Command, args []string) error {
 
 	cp := hivev1.ClusterPool{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ato-cluster-pool",
-			Namespace: "hive",
+			Name:      flags.Name,
+			Namespace: flags.Namespace,
 		},
 		Spec: hivev1.ClusterPoolSpec{
-			Platform: hivev1.Platform{
-				AWS: &aws.Platform{
-					Region:               "us-east-1",
-					CredentialsSecretRef: corev1.LocalObjectReference{Name: "hive-aws-creds"},
-				},
-			},
+			Platform:                       setPlatform(flags.Platform, flags),
 			PullSecretRef:                  &corev1.LocalObjectReference{Name: "hive-install-config-global-pullsecret"},
-			Size:                           3,
-			RunningCount:                   1,
-			BaseDomain:                     "coreostrain.me",
-			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: "ocp-4.9.23"},
-			InstallConfigSecretTemplateRef: &corev1.LocalObjectReference{Name: "sno-install-config"},
+			Size:                           flags.Size,
+			RunningCount:                   flags.Running,
+			BaseDomain:                     flags.BaseDomain,
+			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: flags.OpenShift},
+			InstallConfigSecretTemplateRef: &corev1.LocalObjectReference{Name: flags.InstallConfig},
 			SkipMachinePools:               true,
 		},
 	}
