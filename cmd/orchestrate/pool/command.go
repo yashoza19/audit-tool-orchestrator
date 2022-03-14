@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var flags = orchestrate.PoolFlags{}
+
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pool",
@@ -22,9 +24,26 @@ func NewCmd() *cobra.Command {
 		RunE:    run,
 	}
 
-	/*
-		flags: name, namespace, basedomain, openshift, installconfig, platform, creds, region, running, size
-	*/
+	cmd.Flags().StringVar(&flags.Name, "name", "ato-cluster-pool",
+		"")
+	cmd.Flags().StringVar(&flags.Namespace, "namespace", "hive",
+		"")
+	cmd.Flags().StringVar(&flags.BaseDomain, "basedomain", "coreostrain.me",
+		"")
+	cmd.Flags().StringVar(&flags.OpenShift, "openshift", "",
+		"")
+	cmd.Flags().StringVar(&flags.InstallConfig, "install-config", "ato-install-config",
+		"")
+	cmd.Flags().StringVar(&flags.Platform, "platform", "aws",
+		"")
+	cmd.Flags().StringVar(&flags.Credentials, "credentials", "hive-aws-creds",
+		"")
+	cmd.Flags().StringVar(&flags.Region, "region", "us-east-1",
+		"")
+	cmd.Flags().IntVar(&flags.Running, "running", 0,
+		"")
+	cmd.Flags().IntVar(&flags.Size, "size", 0,
+		"")
 
 	return cmd
 }
