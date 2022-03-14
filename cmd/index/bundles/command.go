@@ -2,6 +2,7 @@ package bundles
 
 import (
 	"audit-tool-orchestrator/pkg"
+	"audit-tool-orchestrator/pkg/index"
 	"database/sql"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
@@ -10,7 +11,7 @@ import (
 	"os"
 )
 
-var flags = pkg.BundleFlags{}
+var flags = index.BundleFlags{}
 
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -66,15 +67,15 @@ func validation(cmd *cobra.Command, args []string) error {
 func run(cmd *cobra.Command, args []string) error {
 	pkg.GenerateTemporaryDirs()
 
-	if err := pkg.DownloadImage(flags.IndexImage, flags.ContainerEngine); err != nil {
+	if err := index.DownloadImage(flags.IndexImage, flags.ContainerEngine); err != nil {
 		return err
 	}
 
-	if err := pkg.ExtractIndexDB(flags.IndexImage, flags.ContainerEngine); err != nil {
+	if err := index.ExtractIndexDB(flags.IndexImage, flags.ContainerEngine); err != nil {
 		return err
 	}
 
-	bundlelist := pkg.BundleList{}
+	bundlelist := index.BundleList{}
 	bundlelist, err := getDataFromIndexDB(bundlelist)
 	if err != nil {
 		return err
@@ -89,14 +90,14 @@ func run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getDataFromIndexDB(data pkg.BundleList) (pkg.BundleList, error) {
+func getDataFromIndexDB(data index.BundleList) (index.BundleList, error) {
 	// Connect to the database
 	db, err := sql.Open("sqlite3", "./output/index.db")
 	if err != nil {
 		return data, fmt.Errorf("unable to connect in to the database : %s", err)
 	}
 
-	query, err := pkg.BuildBundlesQuery()
+	query, err := index.BuildBundlesQuery()
 	if err != nil {
 		return data, err
 	}
@@ -116,7 +117,7 @@ func getDataFromIndexDB(data pkg.BundleList) (pkg.BundleList, error) {
 			log.Errorf("unable to scan data from index %s\n", err.Error())
 		}
 		log.Infof("Generating data from the bundle (%s)", bundleName)
-		bundle := pkg.NewBundle(bundleName, bundlePath)
+		bundle := index.NewBundle(bundleName, bundlePath)
 
 		query = fmt.Sprintf("SELECT c.channel_name, c.package_name FROM channel_entry c "+
 			"where c.operatorbundle_name = '%s'", bundle.Name)

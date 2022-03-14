@@ -3,7 +3,7 @@ package pool
 // create ClusterPool resource
 
 import (
-	"audit-tool-orchestrator/pkg"
+	"audit-tool-orchestrator/pkg/orchestrate"
 	"context"
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	"github.com/openshift/hive/apis/hive/v1/aws"
@@ -16,7 +16,7 @@ import (
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pool",
-		Short:   "",
+		Short:   "Create a Hive ClusterPool resource.",
 		Long:    "",
 		PreRunE: validation,
 		RunE:    run,
@@ -58,7 +58,7 @@ func run(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	hvclient := pkg.GetHiveClient()
+	hvclient := orchestrate.GetHiveClient()
 	if err := hvclient.Create(ctx, &cp); err != nil {
 		log.Errorf("Unable to create ClusterPool: %v\n", err)
 		return err
