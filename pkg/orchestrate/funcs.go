@@ -33,7 +33,17 @@ func GetK8sClient() *kubernetes.Clientset {
 	// create k8s client
 	cfg, err := clientcmd.BuildConfigFromFlags("", os.Getenv("OPENSHIFT_KUBECONFIG"))
 	if err != nil {
-		log.Printf("Unable to build config from flags: %v\n", err)
+		log.Errorf("Unable to build config from flags: %v\n", err)
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+
+	return clientset
+}
+
+func K8sClientForAudit(kubeconfig []byte) *kubernetes.Clientset {
+	cfg, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
+	if err != nil {
+		log.Errorf("Unable to build config from kubeconfig: %v\n", err)
 	}
 	clientset, err := kubernetes.NewForConfig(cfg)
 
@@ -70,6 +80,8 @@ func WaitForSuccessfulClusterClaim(hvclient *hivev1client.Clientset, claim *hive
 		if !ok {
 			log.WithField("object-type", fmt.Sprintf("%T", event.Object)).Fatal("received an unexpected object from Watch")
 		}
+
+		log.Infof("ClusterClaim event received: %v\n", clusterClaim.Status.Conditions)
 
 		var pendingStatus, clusterRunningStatus corev1.ConditionStatus
 

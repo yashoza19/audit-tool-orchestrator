@@ -9,7 +9,9 @@ import (
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"strings"
 )
 
@@ -110,10 +112,44 @@ func run(cmd *cobra.Command, args []string) error {
 		log.Errorf("Unable to get ClusterClaim: %v\n", err)
 	}
 
-	clusterDeployment, _ := orchestrate.WaitForSuccessfulClusterClaim(hvclient, claim)
-	log.Infof(clusterDeployment)
+	cdNameNamespace, _ := orchestrate.WaitForSuccessfulClusterClaim(hvclient, claim)
+	log.Infof("ClusterClaim succeeded. ClusterDeployment %s will be used.\n", cdNameNamespace)
 
-	// clusterDeployment == "" is an error and we need to handle
-	// clusterDeployment
+	clusterDeployment, err := hvclient.HiveV1().ClusterDeployments(cdNameNamespace).Get(ctx, cdNameNamespace, metav1.GetOptions{})
+	if err != nil {
+		log.Errorf("Unable to get ClusterDeployment: %s\n", cdNameNamespace)
+	}
+
+	kubeconfigSecret := clusterDeployment.Spec.ClusterMetadata.AdminKubeconfigSecretRef
+
+	k8sclient := orchestrate.GetK8sClient()
+	kubeconfig, err := k8sclient.CoreV1().Secrets(cdNameNamespace).Get(ctx, kubeconfigSecret.Name, metav1.GetOptions{})
+	if err != nil {
+		log.Errorf("Unable to get kubeconfig for cluster under test: %v\n", err)
+	}
+
+	auditKubeconfig := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kubeconfig",
+		},
+		StringData: map[string]string{"config": string(kubeconfig.Data["raw-kubeconfig"])},
+		Type:       "Opaque",
+	}
+
+	auditClient := orchestrate.K8sClientForAudit(kubeconfig.Data["raw-kubeconfig"])
+	auditClient.CoreV1().Secrets("default").Create(ctx, &auditKubeconfig, metav1.CreateOptions{})
+
+	auditImagePullSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "registry-pull-secret",
+		},
+		StringData: map[string]string{"config.json": os.Getenv("REGISTRY_PULL_SECRET")},
+		Type:       "Opaque",
+	}
+	_, err = auditClient.CoreV1().Secrets("default").Create(ctx, &auditImagePullSecret, metav1.CreateOptions{})
+	if err != nil {
+		log.Errorf("Unable to add registry image pull secret to cluster under test: %v\n", err)
+	}
+
 	return nil
 }
