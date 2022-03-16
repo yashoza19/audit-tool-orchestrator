@@ -115,7 +115,7 @@ func run(cmd *cobra.Command, args []string) error {
 		},
 		Spec: hivev1.ClusterPoolSpec{
 			Platform:                       setPlatform(flags.Platform, flags),
-			PullSecretRef:                  &corev1.LocalObjectReference{Name: "hive-install-config-global-pullsecret"},
+			PullSecretRef:                  &corev1.LocalObjectReference{Name: flags.ImagePullSecret},
 			Size:                           flags.Size,
 			RunningCount:                   flags.Running,
 			BaseDomain:                     flags.BaseDomain,
@@ -126,7 +126,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	hvclient := orchestrate.GetHiveClient()
-	if err := hvclient.Create(ctx, &cp); err != nil {
+	if _, err := hvclient.HiveV1().ClusterPools(flags.Namespace).Create(ctx, &cp, metav1.CreateOptions{}); err != nil {
 		log.Errorf("Unable to create ClusterPool: %v\n", err)
 		return err
 	}

@@ -48,7 +48,7 @@ func validation(cmd *cobra.Command, args []string) error {
 		return &orchestrate.ClusterClaimDeleteFlagSetNameFlagEmptyError{}
 	}
 
-	if len(flags.Name) < 8 || len(flags.Name) > 16 {
+	if len(flags.Name) < 8 || len(flags.Name) > 64 {
 		return &orchestrate.ClusterClaimNameLengthIncorrectError{}
 	}
 
@@ -85,7 +85,8 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	if flags.Delete {
-		if err := hvclient.Delete(ctx, &cc); err != nil {
+		err := hvclient.HiveV1().ClusterClaims(flags.Namespace).Delete(ctx, claimName, metav1.DeleteOptions{})
+		if err != nil {
 			log.Errorf("Unable to delete ClusterClaim %s: %v\n", flags.Name, err)
 			return err
 		}
@@ -94,7 +95,8 @@ func run(cmd *cobra.Command, args []string) error {
 
 		return nil
 	} else {
-		if err := hvclient.Create(ctx, &cc); err != nil {
+		_, err := hvclient.HiveV1().ClusterClaims(flags.Namespace).Create(ctx, &cc, metav1.CreateOptions{})
+		if err != nil {
 			log.Errorf("Unable to create ClusterClaim %s: %v\n", claimName, err)
 			return err
 		}
@@ -102,7 +104,16 @@ func run(cmd *cobra.Command, args []string) error {
 		log.Infof("ClusterClaim %s submitted. Waiting for Pending and ClusterRunning statuses", claimName)
 	}
 
-	// ClusterClaim was created, we need to wait for Pending (False) and ClusterRunning (True) statuses
+	// ClusterClaim was submitted, we need to wait for Pending (False) and ClusterRunning (True) statuses
+	claim, err := hvclient.HiveV1().ClusterClaims(flags.Namespace).Get(ctx, claimName, metav1.GetOptions{})
+	if err != nil {
+		log.Errorf("Unable to get ClusterClaim: %v\n", err)
+	}
 
+	clusterDeployment, _ := orchestrate.WaitForSuccessfulClusterClaim(hvclient, claim)
+	log.Infof(clusterDeployment)
+
+	// clusterDeployment == "" is an error and we need to handle
+	// clusterDeployment
 	return nil
 }
