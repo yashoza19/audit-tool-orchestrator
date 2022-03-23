@@ -6,6 +6,10 @@
 # TODO: index-image and container-engine should be dynamic
 audit-tool-orchestrator index bundles --index-image registry.redhat.io/redhat/certified-operator-index:v4.9 --container-engine podman
 
+count=`jq '.Bundles | length' bundlelist.json`
+batch=$((count / 10))
+lump=$((count % 10))
+
 # Create the ClusterPool
 # TODO: we will use size of 30 and running 10 for now with other hardcoded values for flags
 audit-tool-orchestrator orchestrate pool

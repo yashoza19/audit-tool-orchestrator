@@ -10,6 +10,7 @@ require (
 	github.com/openshift/hive/apis v0.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
+	golang.org/x/mod v0.5.0
 	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v12.0.0+incompatible

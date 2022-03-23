@@ -107,6 +107,8 @@ func validation(cmd *cobra.Command, args []string) error {
 
 func run(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+	hvclient := orchestrate.GetHiveClient()
+	osversion := "ocp-" + orchestrate.GetOpenShiftVersions(flags)
 
 	cp := hivev1.ClusterPool{
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,13 +121,12 @@ func run(cmd *cobra.Command, args []string) error {
 			Size:                           flags.Size,
 			RunningCount:                   flags.Running,
 			BaseDomain:                     flags.BaseDomain,
-			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: flags.OpenShift},
+			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: osversion},
 			InstallConfigSecretTemplateRef: &corev1.LocalObjectReference{Name: flags.InstallConfig},
 			SkipMachinePools:               true,
 		},
 	}
 
-	hvclient := orchestrate.GetHiveClient()
 	if _, err := hvclient.HiveV1().ClusterPools(flags.Namespace).Create(ctx, &cp, metav1.CreateOptions{}); err != nil {
 		log.Errorf("Unable to create ClusterPool: %v\n", err)
 		return err
