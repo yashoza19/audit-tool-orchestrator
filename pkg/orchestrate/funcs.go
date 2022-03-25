@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/mcuadros/go-version"
 	hivev1api "github.com/openshift/hive/apis/hive/v1"
 	hivev1client "github.com/openshift/hive/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
@@ -17,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -54,29 +56,43 @@ func K8sClientForAudit(kubeconfig []byte) *kubernetes.Clientset {
 }
 
 func GetOpenShiftVersions(flags PoolFlags) string {
-	resp, err := http.Get("https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-" + flags.OpenShift + "/release.txt")
+	resp, err := http.Get("https://quay.io/api/v1/repository/openshift-release-dev/ocp-release?includeTags=true")
 	if err != nil {
-		log.Errorf("Unable to get stable OpenShift version from mirror.openshift.com: %v\n", err)
+		log.Errorf("Unable to get stable OpenShift version from https://quay.io/api/v1/repository/openshift-release-dev: %v\n", err)
 	}
+
 	scanner := bufio.NewScanner(resp.Body)
-	r, err := regexp.Compile(`^Name:\s*(\d+\.\d+\.\d+)`)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	if err := scanner.Err(); err != nil {
+		log.Errorf("%v\n", err)
+	}
+
+	r, err := regexp.Compile(`(?:(\d\.\d{1,3}\.\d{1,2})-x86_64)`)
 	if err != nil {
 		log.Errorf("Unable to read the response body from mirror.openshift.com: %v\n", err)
 	}
 
+	var list []string
 	for scanner.Scan() {
 		if r.MatchString(scanner.Text()) {
-			scanResult := r.FindStringSubmatch(scanner.Text())
-			return scanResult[1]
+			scanResult := r.FindAllStringSubmatch(scanner.Text(), -1)
+			for _, s := range scanResult {
+				list = append(list, s[1])
+			}
+		}
+	}
+	version.Sort(list)
+
+	var selectedVersion []string
+	for _, v := range list {
+		if strings.HasPrefix(v, flags.OpenShift) {
+			selectedVersion = append(selectedVersion, v)
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Errorf("%v\n", err)
-		return "Error getting OpenShift version."
-	}
-
-	return "Unable to get OpenShift version."
+	return selectedVersion[len(selectedVersion)-1]
 
 	// TODO: next two commented blocks for reference only remove when binary is ready
 	/*ctx := context.Background()
