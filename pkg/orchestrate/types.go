@@ -31,3 +31,12 @@ type ClaimFlags struct {
 type ClusterClaimDeleteFlagSetNameFlagEmptyError struct{}
 type ClusterClaimNameLengthIncorrectError struct{}
 type ClusterClaimNameHasInvalidCharactersError struct{}
+
+type JobFlags struct {
+	Name        string `json:"name"`
+	BundleImage string `json:"bundleImage"`
+	BundleName  string `json:"bundleName"`
+	BucketName  string `json:"bucket-name"`
+	ClaimName   string `json:"claim-name"`
+	Kubeconfig  string `json:"kubeconfig"`
+}

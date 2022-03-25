@@ -4,13 +4,11 @@ go 1.17
 
 require (
 	github.com/Masterminds/squirrel v1.5.2
-	github.com/google/uuid v1.1.2
 	github.com/mattn/go-sqlite3 v1.14.12
 	github.com/openshift/hive v1.1.16
 	github.com/openshift/hive/apis v0.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
-	golang.org/x/mod v0.5.0
 	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
 	k8s.io/client-go v12.0.0+incompatible

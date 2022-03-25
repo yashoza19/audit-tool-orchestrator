@@ -132,5 +132,10 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	_, err := orchestrate.WaitForSuccessfulClusterPool(hvclient, &cp)
+	if err != nil {
+		log.Fatalf("ClusterPool Watch returned an error: %v\n", err)
+	}
+
 	return nil
 }
