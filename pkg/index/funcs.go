@@ -89,7 +89,7 @@ func (b *BundleList) OutputList() error {
 		return err
 	}
 
-	path := "bundlelist.json"
+	path := "/tmp/bundlelist.json"
 
 	_, err = ioutil.ReadFile(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
