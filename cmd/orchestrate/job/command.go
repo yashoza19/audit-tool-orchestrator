@@ -133,9 +133,9 @@ func run(cmd *cobra.Command, args []string) error {
 								flags.BundleName,
 							},
 							Env: []corev1.EnvVar{
-								{Name: "ENDPOINT", ValueFrom: logEndpoint},
-								{Name: "ACCESS_KEY_ID", ValueFrom: logAccessKeyID},
-								{Name: "SECRET_ACCESS_KEY", ValueFrom: logSecretAccessKey},
+								{Name: "MINIO_ENDPOINT", ValueFrom: logEndpoint},
+								{Name: "MINIO_ACCESS_KEY_ID", ValueFrom: logAccessKeyID},
+								{Name: "MINIO_SECRET_ACCESS_KEY", ValueFrom: logSecretAccessKey},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{Name: "docker-config", MountPath: "/opt/capabilities-tool/.docker/"},
