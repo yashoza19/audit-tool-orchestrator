@@ -59,7 +59,6 @@ func validation(cmd *cobra.Command, args []string) error {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	pkg.CleanupTemporaryDirs()
 	pkg.GenerateTemporaryDirs()
 
 	if err := index.DownloadImage(flags.IndexImage, flags.ContainerEngine); err != nil {
