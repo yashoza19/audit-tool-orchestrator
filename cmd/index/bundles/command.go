@@ -28,7 +28,7 @@ func NewCmd() *cobra.Command {
 		log.Fatalf("Failed to mark `index-image` flag for `index` sub-command as required")
 	}
 
-	cmd.Flags().StringVar(&flags.OutputPath, "output-path", "/tmp/ato/output",
+	cmd.Flags().StringVar(&flags.OutputPath, "output-path", "",
 		"inform the path of the directory to output the report.")
 
 	cmd.Flags().StringVar(&flags.ContainerEngine, "container-engine", pkg.Docker,
@@ -59,6 +59,7 @@ func validation(cmd *cobra.Command, args []string) error {
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	pkg.CleanupTemporaryDirs()
 	pkg.GenerateTemporaryDirs()
 
 	if err := index.DownloadImage(flags.IndexImage, flags.ContainerEngine); err != nil {
@@ -86,7 +87,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 func getDataFromIndexDB(data index.BundleList) (index.BundleList, error) {
 	// Connect to the database
-	db, err := sql.Open("sqlite3", "./output/index.db")
+	db, err := sql.Open("sqlite3", "/tmp/ato/output/index.db")
 	if err != nil {
 		return data, fmt.Errorf("unable to connect in to the database : %s", err)
 	}

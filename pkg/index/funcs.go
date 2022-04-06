@@ -42,7 +42,7 @@ func ExtractIndexDB(image string, containerEngine string) error {
 	}
 
 	// Extract
-	command = exec.Command(containerEngine, "cp", fmt.Sprintf("%s:/database/index.db", catalogIndex), "./output/")
+	command = exec.Command(containerEngine, "cp", fmt.Sprintf("%s:/database/index.db", catalogIndex), "/tmp/ato/output/")
 	_, err = RunCommand(command)
 	if err != nil {
 		return fmt.Errorf("unable to extract the image for index.db %s : %s", image, err)
