@@ -117,7 +117,7 @@ func run(cmd *cobra.Command, args []string) error {
 					Containers: []corev1.Container{
 						{
 							Name:  "audit-tool",
-							Image: "quay.io/opdev/capabilities-tool:v0.2.6",
+							Image: "quay.io/opdev/capabilities-tool:v1.0.0",
 							Args: []string{
 								"index",
 								"capabilities",
