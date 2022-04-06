@@ -23,19 +23,19 @@ func RunCommand(cmd *exec.Cmd) ([]byte, error) {
 }
 
 func GenerateTemporaryDirs() {
-	command := exec.Command("rm", "-rf", "tmp")
+	command := exec.Command("rm", "-rf", "/tmp/ato")
 	_, _ = RunCommand(command)
 
-	command = exec.Command("rm", "-rf", "./output/")
+	command = exec.Command("rm", "-rf", "/tmp/ato/output")
 	_, _ = RunCommand(command)
 
-	command = exec.Command("mkdir", "./output/")
+	command = exec.Command("mkdir", "/tmp/ato/output")
 	_, err := RunCommand(command)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	command = exec.Command("mkdir", "tmp")
+	command = exec.Command("mkdir", "/tmp/ato")
 	_, err = RunCommand(command)
 	if err != nil {
 		log.Fatal(err)
@@ -43,10 +43,10 @@ func GenerateTemporaryDirs() {
 }
 
 func CleanupTemporaryDirs() {
-	command := exec.Command("rm", "-rf", "tmp")
+	command := exec.Command("rm", "-rf", "/tmp/ato")
 	_, _ = RunCommand(command)
 
-	command = exec.Command("rm", "-rf", "./output/")
+	command = exec.Command("rm", "-rf", "/tmp/ato/output")
 	_, _ = RunCommand(command)
 }
 

@@ -22,20 +22,14 @@ func NewCmd() *cobra.Command {
 		RunE:    run,
 	}
 
-	currentPath, err := os.Getwd()
-	if err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
-
 	cmd.Flags().StringVar(&flags.IndexImage, "index-image", "",
 		"index image and tag which will be audit")
 	if err := cmd.MarkFlagRequired("index-image"); err != nil {
 		log.Fatalf("Failed to mark `index-image` flag for `index` sub-command as required")
 	}
 
-	cmd.Flags().StringVar(&flags.OutputPath, "output-path", currentPath,
-		"inform the path of the directory to output the report. (Default: current directory)")
+	cmd.Flags().StringVar(&flags.OutputPath, "output-path", "/tmp/ato/output",
+		"inform the path of the directory to output the report.")
 
 	cmd.Flags().StringVar(&flags.ContainerEngine, "container-engine", pkg.Docker,
 		fmt.Sprintf("specifies the container tool to use. If not set, the default value is docker. "+
