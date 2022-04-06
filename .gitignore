@@ -215,3 +215,7 @@ GitHub.sublime-settings
 bundlelist.json
 .idea
 .idea/*
+dist/
+build/
+build/*
+build

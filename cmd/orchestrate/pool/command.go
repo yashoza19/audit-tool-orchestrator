@@ -107,6 +107,8 @@ func validation(cmd *cobra.Command, args []string) error {
 
 func run(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+	hvclient := orchestrate.GetHiveClient()
+	osversion := "ocp-" + orchestrate.GetOpenShiftVersions(flags)
 
 	cp := hivev1.ClusterPool{
 		ObjectMeta: metav1.ObjectMeta{
@@ -115,20 +117,24 @@ func run(cmd *cobra.Command, args []string) error {
 		},
 		Spec: hivev1.ClusterPoolSpec{
 			Platform:                       setPlatform(flags.Platform, flags),
-			PullSecretRef:                  &corev1.LocalObjectReference{Name: "hive-install-config-global-pullsecret"},
+			PullSecretRef:                  &corev1.LocalObjectReference{Name: flags.ImagePullSecret},
 			Size:                           flags.Size,
 			RunningCount:                   flags.Running,
 			BaseDomain:                     flags.BaseDomain,
-			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: flags.OpenShift},
+			ImageSetRef:                    hivev1.ClusterImageSetReference{Name: osversion},
 			InstallConfigSecretTemplateRef: &corev1.LocalObjectReference{Name: flags.InstallConfig},
 			SkipMachinePools:               true,
 		},
 	}
 
-	hvclient := orchestrate.GetHiveClient()
-	if err := hvclient.Create(ctx, &cp); err != nil {
+	if _, err := hvclient.HiveV1().ClusterPools(flags.Namespace).Create(ctx, &cp, metav1.CreateOptions{}); err != nil {
 		log.Errorf("Unable to create ClusterPool: %v\n", err)
 		return err
+	}
+
+	_, err := orchestrate.WaitForSuccessfulClusterPool(hvclient, &cp)
+	if err != nil {
+		log.Fatalf("ClusterPool Watch returned an error: %v\n", err)
 	}
 
 	return nil

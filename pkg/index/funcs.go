@@ -52,7 +52,12 @@ func ExtractIndexDB(image string, containerEngine string) error {
 
 func BuildBundlesQuery() (string, error) {
 	query := sq.Select("o.name, o.bundlepath").From(
-		"operatorbundle o")
+		"operatorbundle o, channel c").Distinct()
+
+	query = query.Where("c.head_operatorbundle_name == o.name")
+
+	//query := sq.Select("o.name, o.bundlepath").From(
+	//	"operatorbundle o")
 
 	query.OrderBy("o.name")
 
