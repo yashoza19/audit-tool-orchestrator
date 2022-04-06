@@ -29,13 +29,13 @@ func GenerateTemporaryDirs() {
 	command = exec.Command("rm", "-rf", "/tmp/ato/output")
 	_, _ = RunCommand(command)
 
-	command = exec.Command("mkdir", "/tmp/ato/output")
+	command = exec.Command("mkdir", "/tmp/ato")
 	_, err := RunCommand(command)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	command = exec.Command("mkdir", "/tmp/ato")
+	command = exec.Command("mkdir", "/tmp/ato/output")
 	_, err = RunCommand(command)
 	if err != nil {
 		log.Fatal(err)
