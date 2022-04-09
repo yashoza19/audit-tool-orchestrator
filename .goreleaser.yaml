@@ -2,14 +2,21 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - env:
+  - id: linux
+    env:
       - CGO_ENABLED=1
     goos:
       - linux
-      - darwin
     main: ./cmd
-    goarch:
-      - amd64
+    ldflags:
+      - -linkmode external -extldflags '-static' -s -w
+  - id: non-linux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - windows
+    main: ./cmd
 archives:
   - format: binary
 checksum:
