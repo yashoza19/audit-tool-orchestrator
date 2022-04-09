@@ -9,6 +9,8 @@ builds:
       - windows
       - darwin
     main: ./cmd
+    goarch:
+      - amd64
 archives:
   - format: binary
 checksum:
