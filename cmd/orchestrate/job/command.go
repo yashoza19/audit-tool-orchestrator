@@ -58,7 +58,7 @@ func run(cmd *cobra.Command, args []string) error {
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "env-var",
 			},
-			Key: "ENDPOINT",
+			Key: "MINIO_ENDPOINT",
 		},
 	}
 	logAccessKeyID := &corev1.EnvVarSource{
@@ -66,7 +66,7 @@ func run(cmd *cobra.Command, args []string) error {
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "env-var",
 			},
-			Key: "ACCESS_KEY_ID",
+			Key: "MINIO_ACCESS_KEY_ID",
 		},
 	}
 	logSecretAccessKey := &corev1.EnvVarSource{
@@ -74,7 +74,7 @@ func run(cmd *cobra.Command, args []string) error {
 			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "env-var",
 			},
-			Key: "SECRET_ACCESS_KEY",
+			Key: "MINIO_SECRET_ACCESS_KEY",
 		},
 	}
 	auditJob := batchv1.Job{
