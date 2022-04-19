@@ -1,17 +1,31 @@
 package job
 
 import (
+	"audit-tool-orchestrator/pkg"
 	"audit-tool-orchestrator/pkg/orchestrate"
 	"context"
+	"fmt"
+	"github.com/google/go-containerregistry/pkg/crane"
+	operatorv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
+	"os/exec"
+	"path"
 )
 
 var flags = orchestrate.JobFlags{}
+
+var prioritizedInstallModes = []string{
+	string(operatorv1alpha1.InstallModeTypeOwnNamespace),
+	string(operatorv1alpha1.InstallModeTypeSingleNamespace),
+	string(operatorv1alpha1.InstallModeTypeMultiNamespace),
+	string(operatorv1alpha1.InstallModeTypeAllNamespaces),
+}
 
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,7 +48,10 @@ func NewCmd() *cobra.Command {
 		"ClusterClaim resource to be used for audit job.")
 	cmd.Flags().StringVar(&flags.Kubeconfig, "kubeconfig", "",
 		"Kubeconfig to use for creating Job resource.")
-
+	cmd.Flags().StringVar(&flags.PackageName, "package-name", "",
+		"Bundle Package Name for Install Modes")
+	cmd.Flags().BoolVar(&flags.InstallMode, "install-mode", false,
+		"InstallMode Flag to run against provided bundle")
 	return cmd
 }
 
@@ -47,6 +64,24 @@ func run(cmd *cobra.Command, args []string) error {
 	kubeconfig, err := os.ReadFile(flags.Kubeconfig)
 	if err != nil {
 		log.Fatalf("Kubeconfig required to create Job resource: %v\n", err)
+	}
+
+	//targetNamespaces := []string{"default"}
+	targetNamespaces := []string{"default"}
+
+	if flags.InstallMode {
+		targetNamespaces, err = RunInstallMode()
+		log.Info(targetNamespaces, "Here2")
+		if err != nil {
+			fmt.Printf("error running installModes: &s", err)
+		}
+		log.Info("Creating namespace: ", targetNamespaces)
+		createNamespace := exec.Command("oc", "new-project", targetNamespaces[0])
+		_, err = pkg.RunCommand(createNamespace)
+
+		if err != nil {
+			log.Errorf("Unable to create namespace: ", err)
+		}
 	}
 
 	auditClient := orchestrate.K8sClientForAudit(kubeconfig)
@@ -77,10 +112,11 @@ func run(cmd *cobra.Command, args []string) error {
 			Key: "MINIO_SECRET_ACCESS_KEY",
 		},
 	}
+	log.Info("used here", targetNamespaces)
 	auditJob := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      flags.Name,
-			Namespace: "default",
+			Namespace: targetNamespaces[0],
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &jobBackoffLimit,
@@ -117,7 +153,7 @@ func run(cmd *cobra.Command, args []string) error {
 					Containers: []corev1.Container{
 						{
 							Name:  "audit-tool",
-							Image: "quay.io/opdev/capabilities-tool:v1.0.0",
+							Image: "quay.io/opdev/capabilities-tool:v1.0.1-test",
 							Args: []string{
 								"index",
 								"capabilities",
@@ -131,6 +167,8 @@ func run(cmd *cobra.Command, args []string) error {
 								flags.BucketName,
 								"--bundle-name",
 								flags.BundleName,
+								"--namespace",
+								targetNamespaces[0],
 							},
 							Env: []corev1.EnvVar{
 								{Name: "MINIO_ENDPOINT", ValueFrom: logEndpoint},
@@ -152,7 +190,7 @@ func run(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	job, err := auditClient.BatchV1().Jobs("default").Create(ctx, &auditJob, metav1.CreateOptions{})
+	job, err := auditClient.BatchV1().Jobs(targetNamespaces[0]).Create(ctx, &auditJob, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -160,4 +198,66 @@ func run(cmd *cobra.Command, args []string) error {
 	_ = orchestrate.WaitForAuditJob(auditClient, job)
 
 	return nil
+}
+
+func RunInstallMode() ([]string, error) {
+	log.Info("Pulling image: ", flags.BundleImage)
+
+	options := make([]crane.Option, 0)
+	img, err := crane.Pull(flags.BundleImage, options...)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to pull image: %s\n", err)
+	}
+
+	os.Mkdir("tmp", 0o755)
+	containerFSPath := path.Join("tmp", "bundle")
+	if err := os.Mkdir(containerFSPath, 0o755); err != nil {
+		return nil, fmt.Errorf("%s: %s", containerFSPath, err)
+	}
+
+	// export/flatten, and extract
+	log.Info("exporting and flattening image")
+	r, w := io.Pipe()
+	go func() {
+		defer w.Close()
+		log.Debugf("writing container filesystem to output dir: %s", containerFSPath)
+		err = crane.Export(img, w)
+		if err != nil {
+			log.Error("unable to export and flatten container filesystem:", err)
+		}
+	}()
+
+	log.Info("extracting container filesystem to ", containerFSPath)
+	if err := pkg.Untar(containerFSPath, r); err != nil {
+		return nil, fmt.Errorf("%s", err)
+	}
+
+	installedModes, err := orchestrate.GetSupportedInstalledModes("tmp/bundle")
+	log.Info(installedModes)
+
+	var installMode string
+	for i := 0; i < len(prioritizedInstallModes); i++ {
+		if _, ok := installedModes[prioritizedInstallModes[i]]; ok {
+			installMode = prioritizedInstallModes[i]
+			break
+		}
+	}
+	log.Info(installMode)
+	log.Debugf("The operator install mode is %s", installMode)
+	targetNamespaces := make([]string, 2)
+
+	switch installMode {
+	case string(operatorv1alpha1.InstallModeTypeOwnNamespace):
+		targetNamespaces = []string{flags.PackageName}
+	case string(operatorv1alpha1.InstallModeTypeSingleNamespace):
+		targetNamespaces = []string{flags.PackageName + "-target"}
+	case string(operatorv1alpha1.InstallModeTypeMultiNamespace):
+		targetNamespaces = []string{flags.PackageName, flags.PackageName + "-target"}
+	case string(operatorv1alpha1.InstallModeTypeAllNamespaces):
+		targetNamespaces = []string{}
+
+	}
+	log.Info("Here: ", targetNamespaces)
+
+	return targetNamespaces, nil
 }

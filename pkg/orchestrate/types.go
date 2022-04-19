@@ -39,4 +39,20 @@ type JobFlags struct {
 	BucketName  string `json:"bucket-name"`
 	ClaimName   string `json:"claim-name"`
 	Kubeconfig  string `json:"kubeconfig"`
+	PackageName string `json:"package-name"`
+	InstallMode bool   `json:"installMode"`
+}
+
+type ClusterServiceVersion struct {
+	Spec ClusterServiceVersionSpec `yaml:"spec"`
+}
+
+type ClusterServiceVersionSpec struct {
+	// InstallModes specify supported installation types
+	InstallModes []InstallMode `yaml:"installModes,omitempty"`
+}
+
+type InstallMode struct {
+	Type      string `yaml:"type"`
+	Supported bool   `yaml:"supported"`
 }

@@ -7,6 +7,7 @@ import (
 	hivev1api "github.com/openshift/hive/apis/hive/v1"
 	hivev1client "github.com/openshift/hive/pkg/client/clientset/versioned"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 )
@@ -299,4 +301,52 @@ func (c ClusterClaimNameLengthIncorrectError) Error() string {
 
 func (c ClusterClaimNameHasInvalidCharactersError) Error() string {
 	return "--name contains invalid characters; ASCII alphanumeric characters only permitted."
+}
+
+func GetCsvFilePathFromBundle(mountedDir string) (string, error) {
+	log.Trace("reading clusterserviceversion file from the bundle")
+	log.Debug("mounted directory is ", mountedDir)
+	matches, err := filepath.Glob(filepath.Join(mountedDir, "manifests", "*.clusterserviceversion.yaml"))
+	if err != nil {
+		log.Error("glob pattern is malformed: ", err)
+		return "", err
+	}
+	if len(matches) == 0 {
+		log.Error("unable to find clusterserviceversion file in the bundle image: ", err)
+		return "", err
+	}
+	if len(matches) > 1 {
+		log.Error("found more than one clusterserviceversion file in the bundle image: ", err)
+		return "", err
+	}
+	log.Debugf("The path to csv file is %s", matches[0])
+	return matches[0], nil
+}
+
+func GetSupportedInstalledModes(mountedDir string) (map[string]bool, error) {
+	csvFilepath, err := GetCsvFilePathFromBundle(mountedDir)
+	if err != nil {
+		return nil, err
+	}
+
+	csvFileReader, err := os.ReadFile(csvFilepath)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	var csv ClusterServiceVersion
+	err = yaml.Unmarshal(csvFileReader, &csv)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	var installedModes map[string]bool = make(map[string]bool, len(csv.Spec.InstallModes))
+	for _, v := range csv.Spec.InstallModes {
+		if v.Supported {
+			installedModes[v.Type] = true
+		}
+	}
+	return installedModes, nil
 }
