@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
-	"os/exec"
 	"path"
 )
 
@@ -66,25 +65,26 @@ func run(cmd *cobra.Command, args []string) error {
 		log.Fatalf("Kubeconfig required to create Job resource: %v\n", err)
 	}
 
-	//targetNamespaces := []string{"default"}
 	targetNamespaces := []string{"default"}
+	auditClient := orchestrate.K8sClientForAudit(kubeconfig)
 
 	if flags.InstallMode {
 		targetNamespaces, err = RunInstallMode()
-		log.Info(targetNamespaces, "Here2")
 		if err != nil {
-			fmt.Printf("error running installModes: &s", err)
+			log.Errorf("Error running installModes: ", err)
 		}
 		log.Info("Creating namespace: ", targetNamespaces)
-		createNamespace := exec.Command("oc", "new-project", targetNamespaces[0])
-		_, err = pkg.RunCommand(createNamespace)
-
+		nsName := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   targetNamespaces[0],
+				Labels: map[string]string{"openshift.io/run-level": "0"},
+			},
+		}
+		_, err = auditClient.CoreV1().Namespaces().Create(ctx, nsName, metav1.CreateOptions{})
 		if err != nil {
 			log.Errorf("Unable to create namespace: ", err)
 		}
 	}
-
-	auditClient := orchestrate.K8sClientForAudit(kubeconfig)
 
 	jobBackoffLimit := int32(1)
 	jobPrivileged := true
@@ -112,7 +112,6 @@ func run(cmd *cobra.Command, args []string) error {
 			Key: "MINIO_SECRET_ACCESS_KEY",
 		},
 	}
-	log.Info("used here", targetNamespaces)
 	auditJob := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      flags.Name,
@@ -233,7 +232,6 @@ func RunInstallMode() ([]string, error) {
 	}
 
 	installedModes, err := orchestrate.GetSupportedInstalledModes("tmp/bundle")
-	log.Info(installedModes)
 
 	var installMode string
 	for i := 0; i < len(prioritizedInstallModes); i++ {
@@ -242,7 +240,7 @@ func RunInstallMode() ([]string, error) {
 			break
 		}
 	}
-	log.Info(installMode)
+
 	log.Debugf("The operator install mode is %s", installMode)
 	targetNamespaces := make([]string, 2)
 
@@ -257,7 +255,6 @@ func RunInstallMode() ([]string, error) {
 		targetNamespaces = []string{}
 
 	}
-	log.Info("Here: ", targetNamespaces)
 
 	return targetNamespaces, nil
 }

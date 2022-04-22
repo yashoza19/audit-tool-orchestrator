@@ -342,7 +342,7 @@ func GetSupportedInstalledModes(mountedDir string) (map[string]bool, error) {
 		return nil, err
 	}
 
-	var installedModes map[string]bool = make(map[string]bool, len(csv.Spec.InstallModes))
+	var installedModes = make(map[string]bool, len(csv.Spec.InstallModes))
 	for _, v := range csv.Spec.InstallModes {
 		if v.Supported {
 			installedModes[v.Type] = true
